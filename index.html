@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Property Cost Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#EAEEF1;
+    --surface:#FBFCFD;
+    --ink:#16233A;
+    --ink-soft:#546074;
+    --primary:#1E4B57;
+    --accent:#C77D2E;
+    --line:rgba(22,35,58,0.14);
+    --line-soft:rgba(22,35,58,0.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    padding:20px 16px 48px;
+    min-height:100vh;
+  }
+  .wrap{max-width:920px;margin:0 auto}
+
+  /* Header */
+  .masthead{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;
+    padding-bottom:18px;margin-bottom:22px;
+    border-bottom:2px solid var(--ink);
+  }
+  .eyebrow{
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--primary);font-weight:600;margin-bottom:8px;
+  }
+  h1{
+    font-family:'Fraunces',serif;font-weight:500;
+    font-size:clamp(30px,7vw,46px);line-height:1.02;
+    letter-spacing:-0.01em;color:var(--ink);
+  }
+  .masthead .meta{
+    text-align:right;font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--ink-soft);line-height:1.7;
+  }
+  .subtitle{
+    margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;
+    color:var(--primary);font-weight:500;letter-spacing:.02em;
+  }
+
+  .grid{display:grid;grid-template-columns:1fr;gap:22px}
+  @media(min-width:760px){.grid{grid-template-columns:0.9fr 1.1fr;gap:28px;align-items:start}}
+
+  /* Inputs card */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 20px;
+  }
+  .card-label{
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:600;margin-bottom:18px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .card-label::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+
+  .field{margin-bottom:18px}
+  .field:last-child{margin-bottom:0}
+  .field label{
+    display:block;font-size:13px;font-weight:500;
+    color:var(--ink);margin-bottom:7px;
+  }
+  .field .hint{color:var(--ink-soft);font-weight:400;font-size:12px}
+  .input-shell{
+    display:flex;align-items:center;
+    border:1.5px solid var(--line);border-radius:10px;
+    background:#fff;overflow:hidden;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .input-shell:focus-within{
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(30,75,87,0.12);
+  }
+  .input-shell .unit{
+    padding:0 12px;font-family:'IBM Plex Mono',monospace;
+    font-size:14px;color:var(--ink-soft);
+    background:rgba(22,35,58,0.03);align-self:stretch;
+    display:flex;align-items:center;border-right:1px solid var(--line-soft);
+  }
+  .input-shell .unit.suffix{border-right:0;border-left:1px solid var(--line-soft)}
+  input[type=text]{
+    flex:1;border:0;outline:0;background:transparent;
+    font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;
+    color:var(--ink);padding:13px 12px;width:100%;
+    font-feature-settings:"tnum";text-align:right;
+  }
+  select{
+    flex:1;border:0;outline:0;background:transparent;
+    font-family:'Inter',sans-serif;font-size:15px;font-weight:600;
+    color:var(--ink);padding:13px 12px;width:100%;cursor:pointer;
+    -webkit-appearance:none;appearance:none;
+  }
+  .unit.caret{pointer-events:none;font-size:12px;color:var(--primary)}
+  .computed{
+    display:flex;align-items:center;justify-content:flex-end;
+    border:1.5px dashed var(--primary);border-radius:10px;
+    background:rgba(30,75,87,0.06);
+    font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;
+    color:var(--primary);padding:13px 14px;
+    font-feature-settings:"tnum";
+  }
+  .secondary-inputs{margin-top:20px;padding-top:18px;border-top:1px dashed var(--line)}
+  .secondary-inputs .field label{font-weight:400;color:var(--ink-soft)}
+
+  /* Breakdown ledger */
+  .ledger .card-label{color:var(--primary)}
+  .derived-note{
+    font-size:12px;color:var(--ink-soft);
+    background:rgba(30,75,87,0.06);
+    border-left:3px solid var(--primary);
+    padding:10px 12px;border-radius:0 8px 8px 0;
+    margin-bottom:18px;line-height:1.55;
+  }
+  .derived-note b{font-family:'IBM Plex Mono',monospace;color:var(--primary);font-weight:600}
+
+  .row{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:12px;padding:12px 0;border-bottom:1px solid var(--line-soft);
+  }
+  .row .name{font-size:14px;color:var(--ink)}
+  .row .name .tag{
+    display:block;font-size:11px;color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;margin-top:2px;
+  }
+  .row .val{
+    font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;
+    color:var(--ink);white-space:nowrap;font-feature-settings:"tnum";
+  }
+  .row.base .val{color:var(--ink-soft)}
+
+  .total{
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    margin-top:16px;padding:18px 18px;
+    background:var(--ink);border-radius:12px;color:#fff;
+  }
+  .total .name{
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    font-weight:600;color:rgba(255,255,255,0.7);
+  }
+  .total .val{
+    font-family:'IBM Plex Mono',monospace;font-size:clamp(22px,5vw,28px);
+    font-weight:600;color:#fff;white-space:nowrap;
+    border-bottom:3px solid var(--accent);padding-bottom:2px;
+  }
+
+  .actions{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap}
+  button{
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:600;
+    border:0;border-radius:10px;padding:14px 22px;cursor:pointer;
+    transition:transform .1s ease, background .15s ease, opacity .15s ease;
+    flex:1;min-width:150px;
+  }
+  button:active{transform:translateY(1px)}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-primary:hover{background:#173a44}
+  .btn-ghost{background:transparent;color:var(--primary);border:1.5px solid var(--line);flex:0 0 auto;min-width:auto}
+  .btn-ghost:hover{border-color:var(--primary)}
+
+  footer{
+    margin-top:30px;text-align:center;font-size:11px;color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.04em;
+  }
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Purchase Estimate</div>
+      <h1>Property Cost Sheet</h1>
+      <div class="subtitle" id="projUnit"></div>
+    </div>
+    <div class="meta" id="metaDate"></div>
+  </header>
+
+  <div class="grid">
+    <!-- INPUTS -->
+    <section class="card">
+      <div class="card-label">Inputs</div>
+
+      <div class="field">
+        <label for="project">Project</label>
+        <div class="input-shell">
+          <select id="project"></select>
+          <span class="unit suffix caret">▾</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="unit">Unit</label>
+        <div class="input-shell">
+          <select id="unit"></select>
+          <span class="unit suffix caret">▾</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="price">Sale Price per sq ft</label>
+        <div class="input-shell">
+          <span class="unit">₹</span>
+          <input type="text" id="price" inputmode="decimal" value="6446.14" />
+          <span class="unit suffix">/ sq ft</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="area">Unit Area <span class="hint">(sale area)</span></label>
+        <div class="input-shell">
+          <input type="text" id="area" inputmode="decimal" value="1179" />
+          <span class="unit suffix">sq ft</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Sale Value <span class="hint">= price/sq ft × area</span></label>
+        <div class="computed" id="saleValueBox">—</div>
+      </div>
+
+      <div class="field">
+        <label for="rate">Registration Rate <span class="hint">(guideline / sq ft)</span></label>
+        <div class="input-shell">
+          <span class="unit">₹</span>
+          <input type="text" id="rate" inputmode="numeric" value="4500" />
+          <span class="unit suffix">/ sq ft</span>
+        </div>
+      </div>
+
+      <div class="secondary-inputs">
+        <div class="field">
+          <label for="service">Service Connection <span class="hint">(fixed charge)</span></label>
+          <div class="input-shell">
+            <span class="unit">₹</span>
+            <input type="text" id="service" inputmode="numeric" value="200000" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="corpus">Corpus to Association <span class="hint">(fixed charge)</span></label>
+          <div class="input-shell">
+            <span class="unit">₹</span>
+            <input type="text" id="corpus" inputmode="numeric" value="100000" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BREAKDOWN -->
+    <section class="card ledger">
+      <div class="card-label">Cost Breakdown</div>
+
+      <div class="derived-note">
+        Registration &amp; GST are charged on the guideline value
+        (rate × area = <b id="guideline">—</b>), not on the sale value.
+      </div>
+
+      <div class="row base">
+        <span class="name">Sale Value</span>
+        <span class="val" id="o_sale">—</span>
+      </div>
+      <div class="row">
+        <span class="name">Registration <span class="tag">7% of guideline value</span></span>
+        <span class="val" id="o_reg">—</span>
+      </div>
+      <div class="row">
+        <span class="name">GST <span class="tag">5% of guideline value</span></span>
+        <span class="val" id="o_gst">—</span>
+      </div>
+      <div class="row">
+        <span class="name">Service Connection</span>
+        <span class="val" id="o_service">—</span>
+      </div>
+      <div class="row">
+        <span class="name">Corpus to Association</span>
+        <span class="val" id="o_corpus">—</span>
+      </div>
+
+      <div class="total">
+        <span class="name">Total Payable</span>
+        <span class="val" id="o_total">—</span>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="pdfBtn">Download PDF</button>
+        <button class="btn-ghost" id="resetBtn">Reset</button>
+      </div>
+    </section>
+  </div>
+
+  <footer>Registration 7% · GST 5% · figures in Indian Rupees</footer>
+</div>
+
+<script>
+  const REG_PCT = 0.07;
+  const GST_PCT = 0.05;
+  const DEFAULTS = { price:6446.14, area:1179, rate:4500, service:200000, corpus:100000 };
+
+  // Unit master (project -> units with salable area in sq ft)
+  const PROJECTS = {
+    "Triksham": [
+      {unit:"1A", area:1179}, {unit:"1B", area:1285}, {unit:"1C", area:1282},
+      {unit:"3A", area:1179}, {unit:"3B", area:1285}
+    ],
+    "Nandalala": [
+      {unit:"2A", area:1314}, {unit:"2B", area:1251}, {unit:"2C", area:1251},
+      {unit:"2E", area:1284}, {unit:"2F", area:1195}, {unit:"3A", area:1314},
+      {unit:"3B", area:1251}, {unit:"3C", area:1251}, {unit:"3D", area:1356},
+      {unit:"3E", area:1284}, {unit:"3F", area:1195}, {unit:"4B", area:1251},
+      {unit:"4E", area:1284}, {unit:"5D", area:1356}, {unit:"5F", area:1195}
+    ],
+    "The Hearty": [
+      {unit:"GF 2", area:410.4}, {unit:"GF 3", area:416.4}, {unit:"GF 4", area:414.4},
+      {unit:"GF 5", area:410.4}, {unit:"GF 6", area:416.4}, {unit:"SF 1", area:416.4},
+      {unit:"SF 2", area:410.4}, {unit:"SF 3", area:414.4}, {unit:"SF 4", area:414.4},
+      {unit:"SF 5", area:410.4}, {unit:"SF 6", area:416.4}, {unit:"SF 7", area:416.4},
+      {unit:"SF 8", area:416.4}, {unit:"SF 9", area:416.4}, {unit:"SF 10", area:416.4}
+    ]
+  };
+  const DEFAULT_PROJECT = "Triksham", DEFAULT_UNIT = "1A";
+
+  const $ = id => document.getElementById(id);
+  const ids = ['price','area','rate','service','corpus'];
+
+  // Indian-format currency
+  const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+  const num = n => Math.round(n).toLocaleString('en-IN');
+
+  const parse = v => {
+    const n = parseFloat(String(v).replace(/[^0-9.]/g,''));
+    return isNaN(n) ? 0 : n;
+  };
+
+  function compute(){
+    const price   = parse($('price').value);
+    const area    = parse($('area').value);
+    const rate    = parse($('rate').value);
+    const service = parse($('service').value);
+    const corpus  = parse($('corpus').value);
+
+    const sale = price * area;
+    const guideline = rate * area;
+    const reg = guideline * REG_PCT;
+    const gst = guideline * GST_PCT;
+    const total = sale + reg + gst + service + corpus;
+
+    return { price, sale, area, rate, service, corpus, guideline, reg, gst, total };
+  }
+
+  function render(){
+    const d = compute();
+    $('projUnit').textContent = $('project').value + '  ·  Unit ' + $('unit').value;
+    $('saleValueBox').textContent = inr(d.sale);
+    $('guideline').textContent = inr(d.guideline);
+    $('o_sale').textContent    = inr(d.sale);
+    $('o_reg').textContent     = inr(d.reg);
+    $('o_gst').textContent     = inr(d.gst);
+    $('o_service').textContent = inr(d.service);
+    $('o_corpus').textContent  = inr(d.corpus);
+    $('o_total').textContent   = inr(d.total);
+  }
+
+  const fmtArea = a => Number.isInteger(a) ? a.toString() : a.toString();
+
+  function populateProjects(){
+    const ps = $('project'); ps.innerHTML = '';
+    Object.keys(PROJECTS).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name; ps.appendChild(o);
+    });
+  }
+  function populateUnits(){
+    const proj = $('project').value;
+    const us = $('unit'); us.innerHTML = '';
+    PROJECTS[proj].forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.unit;
+      o.textContent = u.unit + '  —  ' + fmtArea(u.area) + ' sq ft';
+      us.appendChild(o);
+    });
+  }
+  function applyUnitArea(){
+    const rec = PROJECTS[$('project').value].find(u => u.unit === $('unit').value);
+    if(rec) $('area').value = rec.area;
+    render();
+  }
+
+  $('project').addEventListener('change', () => { populateUnits(); applyUnitArea(); });
+  $('unit').addEventListener('change', applyUnitArea);
+
+  ids.forEach(id => $(id).addEventListener('input', render));
+
+  $('resetBtn').addEventListener('click', () => {
+    ids.forEach(id => $(id).value = DEFAULTS[id]);
+    $('project').value = DEFAULT_PROJECT;
+    populateUnits();
+    $('unit').value = DEFAULT_UNIT;
+    applyUnitArea();
+  });
+
+  // Date in header
+  const today = new Date();
+  const dstr = today.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  $('metaDate').innerHTML = 'Estimate date<br>' + dstr;
+
+  // Initialize dropdowns
+  populateProjects();
+  $('project').value = DEFAULT_PROJECT;
+  populateUnits();
+  $('unit').value = DEFAULT_UNIT;
+
+  render();
+
+  /* ---------- PDF GENERATION ---------- */
+  $('pdfBtn').addEventListener('click', () => {
+    const d = compute();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' });
+
+    const W = doc.internal.pageSize.getWidth();
+    const M = 56;                 // margin
+    const R = W - M;              // right edge
+    let y = 64;
+
+    const ink = [22,35,58], soft=[84,96,116], primary=[30,75,87], accent=[199,125,46];
+    const rupee = n => 'Rs. ' + Math.round(n).toLocaleString('en-IN');
+
+    // Header
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...primary);
+    doc.text('PURCHASE ESTIMATE', M, y);
+    doc.setFont('times','normal'); doc.setFontSize(26); doc.setTextColor(...ink);
+    doc.text('Property Cost Sheet', M, y+26);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...soft);
+    doc.text('Estimate date: ' + dstr, R, y+2, {align:'right'});
+    y += 44;
+    doc.setDrawColor(...ink); doc.setLineWidth(1.4); doc.line(M, y, R, y);
+    y += 30;
+
+    // Inputs summary
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...soft);
+    doc.text('INPUTS', M, y); y += 16;
+    const inputs = [
+      ['Sale price per sq ft', rupee(d.price) + ' / sq ft'],
+      ['Salable area', d.area.toLocaleString('en-IN') + ' sq ft'],
+      ['Sale value (price x area)', rupee(d.sale)],
+      ['Registration rate', rupee(d.rate) + ' / sq ft'],
+      ['Guideline value (rate x area)', rupee(d.guideline)],
+    ];
+    doc.setFontSize(10);
+    inputs.forEach(([k,v]) => {
+      doc.setFont('helvetica','normal'); doc.setTextColor(...soft); doc.text(k, M, y);
+      doc.setFont('courier','normal'); doc.setTextColor(...ink); doc.text(v, R, y, {align:'right'});
+      y += 18;
+    });
+    y += 14;
+
+    // Breakdown heading
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...primary);
+    doc.text('COST BREAKDOWN', M, y); y += 8;
+    doc.setDrawColor(200,206,214); doc.setLineWidth(0.8); doc.line(M, y, R, y);
+    y += 22;
+
+    const rows = [
+      ['Sale Value', 'price/sq ft x area', rupee(d.sale)],
+      ['Registration', '7% of guideline value', rupee(d.reg)],
+      ['GST', '5% of guideline value', rupee(d.gst)],
+      ['Service Connection', 'fixed charge', rupee(d.service)],
+      ['Corpus to Association', 'fixed charge', rupee(d.corpus)],
+    ];
+    rows.forEach(([name, tag, val]) => {
+      doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(...ink);
+      doc.text(name, M, y);
+      if(tag){ doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...soft); doc.text(tag, M, y+12); }
+      doc.setFont('courier','normal'); doc.setFontSize(11); doc.setTextColor(...ink);
+      doc.text(val, R, y, {align:'right'});
+      y += tag ? 26 : 22;
+      doc.setDrawColor(230,233,238); doc.setLineWidth(0.6); doc.line(M, y-8, R, y-8);
+    });
+
+    // Total block
+    y += 10;
+    doc.setFillColor(...ink); doc.roundedRect(M, y, R-M, 52, 8, 8, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
+    doc.text('TOTAL PAYABLE', M+18, y+31);
+    doc.setFont('courier','bold'); doc.setFontSize(17); doc.setTextColor(255,255,255);
+    doc.text(rupee(d.total), R-18, y+32, {align:'right'});
+    doc.setDrawColor(...accent); doc.setLineWidth(2);
+    const tw = doc.getTextWidth(rupee(d.total));
+    doc.line(R-18-tw, y+38, R-18, y+38);
+    y += 52;
+
+    // Footer note
+    y += 30;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...soft);
+    doc.text('Registration and GST are computed on the guideline value (rate x area), not on the sale value.', M, y);
+    doc.text('This estimate is indicative and for reference only. Figures in Indian Rupees.', M, y+13);
+
+    doc.save('Property-Cost-Sheet.pdf');
+  });
+</script>
+</body>
+</html>
