@@ -218,7 +218,7 @@
         <label for="price">Sale Price per sq ft</label>
         <div class="input-shell">
           <span class="unit">₹</span>
-          <input type="text" id="price" inputmode="decimal" value="6446.14" />
+          <input type="text" id="price" inputmode="decimal" value="6000" />
           <span class="unit suffix">/ sq ft</span>
         </div>
       </div>
@@ -232,8 +232,11 @@
       </div>
 
       <div class="field">
-        <label>Sale Value <span class="hint">= price/sq ft × area</span></label>
-        <div class="computed" id="saleValueBox">—</div>
+        <label for="saleValue">Sale Value <span class="hint">= price/sq ft × area (editable)</span></label>
+        <div class="input-shell">
+          <span class="unit">₹</span>
+          <input type="text" id="saleValue" inputmode="decimal" value="" />
+        </div>
       </div>
 
       <div class="field">
@@ -311,7 +314,7 @@
 <script>
   const REG_PCT = 0.07;
   const GST_PCT = 0.05;
-  const DEFAULTS = { price:6446.14, area:1179, rate:4500, service:200000, corpus:100000 };
+  const DEFAULTS = { price:6000, area:1179, rate:4500, service:200000, corpus:100000 };
 
   // Unit master (project -> units with salable area in sq ft)
   const PROJECTS = {
@@ -325,19 +328,16 @@
       {unit:"3B", area:1251}, {unit:"3C", area:1251}, {unit:"3D", area:1356},
       {unit:"3E", area:1284}, {unit:"3F", area:1195}, {unit:"4B", area:1251},
       {unit:"4E", area:1284}, {unit:"5D", area:1356}, {unit:"5F", area:1195}
-    ],
-    "The Hearty": [
-      {unit:"GF 2", area:410.4}, {unit:"GF 3", area:416.4}, {unit:"GF 4", area:414.4},
-      {unit:"GF 5", area:410.4}, {unit:"GF 6", area:416.4}, {unit:"SF 1", area:416.4},
-      {unit:"SF 2", area:410.4}, {unit:"SF 3", area:414.4}, {unit:"SF 4", area:414.4},
-      {unit:"SF 5", area:410.4}, {unit:"SF 6", area:416.4}, {unit:"SF 7", area:416.4},
-      {unit:"SF 8", area:416.4}, {unit:"SF 9", area:416.4}, {unit:"SF 10", area:416.4}
     ]
   };
   const DEFAULT_PROJECT = "Triksham", DEFAULT_UNIT = "1A";
 
+  // Per sq ft sale price used automatically when a project is selected
+  const PROJECT_PRICE = { "Triksham": 6000, "Nandalala": 9800 };
+
   const $ = id => document.getElementById(id);
   const ids = ['price','area','rate','service','corpus'];
+  let saleManual = false; // true once the user has typed directly into Sale Value
 
   // Indian-format currency
   const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
@@ -355,7 +355,7 @@
     const service = parse($('service').value);
     const corpus  = parse($('corpus').value);
 
-    const sale = price * area;
+    const sale = saleManual ? parse($('saleValue').value) : price * area;
     const guideline = rate * area;
     const reg = guideline * REG_PCT;
     const gst = guideline * GST_PCT;
@@ -367,7 +367,10 @@
   function render(){
     const d = compute();
     $('projUnit').textContent = $('project').value + '  ·  Unit ' + $('unit').value;
-    $('saleValueBox').textContent = inr(d.sale);
+    if(!saleManual){
+      const rounded = Math.round(d.sale * 100) / 100;
+      $('saleValue').value = rounded % 1 === 0 ? rounded.toString() : rounded.toFixed(2);
+    }
     $('guideline').textContent = inr(d.guideline);
     $('o_sale').textContent    = inr(d.sale);
     $('o_reg').textContent     = inr(d.reg);
@@ -396,22 +399,33 @@
       us.appendChild(o);
     });
   }
+  function applyProjectPrice(){
+    const proj = $('project').value;
+    if(PROJECT_PRICE[proj] !== undefined) $('price').value = PROJECT_PRICE[proj];
+  }
+
   function applyUnitArea(){
     const rec = PROJECTS[$('project').value].find(u => u.unit === $('unit').value);
     if(rec) $('area').value = rec.area;
+    saleManual = false;
     render();
   }
 
-  $('project').addEventListener('change', () => { populateUnits(); applyUnitArea(); });
+  $('project').addEventListener('change', () => { applyProjectPrice(); populateUnits(); applyUnitArea(); });
   $('unit').addEventListener('change', applyUnitArea);
 
-  ids.forEach(id => $(id).addEventListener('input', render));
+  $('price').addEventListener('input', () => { saleManual = false; render(); });
+  $('area').addEventListener('input', () => { saleManual = false; render(); });
+  ['rate','service','corpus'].forEach(id => $(id).addEventListener('input', render));
+  $('saleValue').addEventListener('input', () => { saleManual = true; render(); });
 
   $('resetBtn').addEventListener('click', () => {
     ids.forEach(id => $(id).value = DEFAULTS[id]);
     $('project').value = DEFAULT_PROJECT;
+    applyProjectPrice();
     populateUnits();
     $('unit').value = DEFAULT_UNIT;
+    saleManual = false;
     applyUnitArea();
   });
 
@@ -423,6 +437,7 @@
   // Initialize dropdowns
   populateProjects();
   $('project').value = DEFAULT_PROJECT;
+  applyProjectPrice();
   populateUnits();
   $('unit').value = DEFAULT_UNIT;
 
@@ -457,9 +472,8 @@
     doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...soft);
     doc.text('INPUTS', M, y); y += 16;
     const inputs = [
-      ['Sale price per sq ft', rupee(d.price) + ' / sq ft'],
       ['Salable area', d.area.toLocaleString('en-IN') + ' sq ft'],
-      ['Sale value (price x area)', rupee(d.sale)],
+      ['Sale value', rupee(d.sale)],
       ['Registration rate', rupee(d.rate) + ' / sq ft'],
       ['Guideline value (rate x area)', rupee(d.guideline)],
     ];
@@ -478,7 +492,7 @@
     y += 22;
 
     const rows = [
-      ['Sale Value', 'price/sq ft x area', rupee(d.sale)],
+      ['Sale Value', '', rupee(d.sale)],
       ['Registration', '7% of guideline value', rupee(d.reg)],
       ['GST', '5% of guideline value', rupee(d.gst)],
       ['Service Connection', 'fixed charge', rupee(d.service)],
@@ -512,7 +526,7 @@
     doc.text('Registration and GST are computed on the guideline value (rate x area), not on the sale value.', M, y);
     doc.text('This estimate is indicative and for reference only. Figures in Indian Rupees.', M, y+13);
 
-    doc.save('Estimate.pdf');
+    doc.save('Property-Cost-Sheet.pdf');
   });
 </script>
 </body>
