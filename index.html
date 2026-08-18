@@ -335,6 +335,9 @@
   // Per sq ft sale price used automatically when a project is selected
   const PROJECT_PRICE = { "Triksham": 6000, "Nandalala": 9800 };
 
+  // Per sq ft registration (guideline) rate used automatically when a project is selected
+  const PROJECT_RATE = { "Triksham": 4500, "Nandalala": 6500 };
+
   const $ = id => document.getElementById(id);
   const ids = ['price','area','rate','service','corpus'];
   let saleManual = false; // true once the user has typed directly into Sale Value
@@ -403,6 +406,10 @@
     const proj = $('project').value;
     if(PROJECT_PRICE[proj] !== undefined) $('price').value = PROJECT_PRICE[proj];
   }
+  function applyProjectRate(){
+    const proj = $('project').value;
+    if(PROJECT_RATE[proj] !== undefined) $('rate').value = PROJECT_RATE[proj];
+  }
 
   function applyUnitArea(){
     const rec = PROJECTS[$('project').value].find(u => u.unit === $('unit').value);
@@ -411,7 +418,7 @@
     render();
   }
 
-  $('project').addEventListener('change', () => { applyProjectPrice(); populateUnits(); applyUnitArea(); });
+  $('project').addEventListener('change', () => { applyProjectPrice(); applyProjectRate(); populateUnits(); applyUnitArea(); });
   $('unit').addEventListener('change', applyUnitArea);
 
   $('price').addEventListener('input', () => { saleManual = false; render(); });
@@ -423,6 +430,7 @@
     ids.forEach(id => $(id).value = DEFAULTS[id]);
     $('project').value = DEFAULT_PROJECT;
     applyProjectPrice();
+    applyProjectRate();
     populateUnits();
     $('unit').value = DEFAULT_UNIT;
     saleManual = false;
@@ -438,6 +446,7 @@
   populateProjects();
   $('project').value = DEFAULT_PROJECT;
   applyProjectPrice();
+  applyProjectRate();
   populateUnits();
   $('unit').value = DEFAULT_UNIT;
 
